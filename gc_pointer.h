@@ -1,3 +1,6 @@
+#ifndef _GC_POINTER_H_
+#define _GC_POINTER_H_
+
 #include <iostream>
 #include <list>
 #include <typeinfo>
@@ -13,7 +16,8 @@
     specify the array size.
 */
 template <class T, int size = 0>
-class Pointer{
+class Pointer
+{
 private:
     // refContainer maintains the garbage collection list.
     static std::list<PtrDetails<T> > refContainer;
@@ -38,12 +42,13 @@ public:
     // Empty constructor
     // NOTE: templates aren't able to have prototypes with default arguments
     // this is why constructor is designed like this:
-    Pointer(){
+    Pointer()
+    {
         Pointer(NULL);
     }
-    Pointer(T*);
-    // Copy constructor.
-    Pointer(const Pointer &);
+    Pointer(T*); //defined below outside the class
+    // pparthas: Copy constructor defined using above constructor
+    Pointer(const Pointer &inObj): Pointer(inObj.addr) {}
     // Destructor for Pointer.
     ~Pointer();
     // Collect garbage. Returns true if at least
@@ -55,9 +60,7 @@ public:
     Pointer &operator=(Pointer &rv);
     // Return a reference to the object pointed
     // to by this Pointer.
-    T &operator*(){
-        return *addr;
-    }
+    T &operator*() { return *addr; }
     // Return the address being pointed to.
     T *operator->() { return addr; }
     // Return a reference to the object at the
@@ -100,31 +103,52 @@ bool Pointer<T, size>::first = true;
 
 // Constructor for both initialized and uninitialized objects. -> see class interface
 template<class T,int size>
-Pointer<T,size>::Pointer(T *t){
+Pointer<T,size>::Pointer(T *t)
+{
     // Register shutdown() as an exit function.
     if (first)
         atexit(shutdown);
     first = false;
 
-    // TODO: Implement Pointer constructor
+    // pparthas: Implement Pointer constructor
     // Lab: Smart Pointer Project Lab
-
-}
-// Copy constructor.
-template< class T, int size>
-Pointer<T,size>::Pointer(const Pointer &ob){
-
-    // TODO: Implement Pointer constructor
-    // Lab: Smart Pointer Project Lab
-
+	if(t!=nullptr)
+	{
+		addr = t;
+		if(size > 0)
+		{
+    		isArray = true;
+		}
+    	arraySize = size;
+	}
+    auto p_iter = findPtrInfo(t);
+    if(p_iter == refContainer.end())
+	{
+        PtrDetails<T> newptrDetails;
+    	newptrDetails.refcount = 1;
+    	newptrDetails.memPtr = t;
+    	newptrDetails.isArray = isArray;
+    	newptrDetails.arraySize = arraySize;
+        refContainer.push_back(newptrDetails);
+    }
+	else
+	{
+        p_iter->refcount++;
+    }
 }
 
 // Destructor for Pointer.
 template <class T, int size>
 Pointer<T, size>::~Pointer(){
 
-    // TODO: Implement Pointer destructor
+    // pparthas: Implement Pointer destructor
     // Lab: New and Delete Project Lab
+	auto p_iter = findPtrInfo(addr);
+    if(p_iter != refContainer.end())
+	{	
+    	if(p_iter->refcount > 0) p_iter->refcount--;
+    	if(p_iter->refcount == 0) collect();
+	}
 }
 
 // Collect garbage. Returns true if at least
@@ -132,27 +156,81 @@ Pointer<T, size>::~Pointer(){
 template <class T, int size>
 bool Pointer<T, size>::collect(){
 
-    // TODO: Implement collect function
+    // pparthas: Implement collect function
     // LAB: New and Delete Project Lab
     // Note: collect() will be called in the destructor
-    return false;
+    bool freedMem = false;
+    typename std::list<PtrDetails<T> >::iterator p_iter = refContainer.begin();
+	
+    do
+	{
+        for(; p_iter != refContainer.end(); p_iter++)
+		{
+            if(p_iter->refcount > 0) continue;
+            if(p_iter->memPtr)
+			{
+                if(p_iter->isArray) delete[] p_iter->memPtr;
+                else delete p_iter->memPtr;
+				freedMem = true;
+                refContainer.erase(p_iter--);
+            }
+        }
+    } while (p_iter != refContainer.end());
+    
+    return freedMem;
 }
 
 // Overload assignment of pointer to Pointer.
 template <class T, int size>
-T *Pointer<T, size>::operator=(T *t){
-
-    // TODO: Implement operator==
+T *Pointer<T, size>::operator=(T *t)
+{
+    // pparthas: Implement operator=
     // LAB: Smart Pointer Project Lab
-
+    auto p_iter = findPtrInfo(addr);
+    p_iter->refcount--;
+    if(p_iter->refcount == 0) collect();
+    p_iter = findPtrInfo(t);
+    if(p_iter == refContainer.end())
+	{
+        PtrDetails<T> newPtrDetails;
+		newPtrDetails.refcount = 1;
+        if(size > 0)
+		{
+            newPtrDetails.isArray = true;
+        }
+		newPtrDetails.arraySize = size;
+        newPtrDetails.memPtr = t;
+        refContainer.push_back(newPtrDetails);
+    }
+	else
+	{
+        p_iter->refcount++;
+    }
+    if(size > 0)
+	{
+        isArray = true;
+        arraySize = size;
+    }
+	addr = t;
+    return addr;
 }
+
 // Overload assignment of Pointer to Pointer.
 template <class T, int size>
-Pointer<T, size> &Pointer<T, size>::operator=(Pointer &rv){
-
-    // TODO: Implement operator==
+Pointer<T, size> &Pointer<T, size>::operator=(Pointer &rv)
+{
+    // pparthas: Implement operator==
     // LAB: Smart Pointer Project Lab
-
+    if(*this == rv) return *this;
+    auto p_iter = findPtrInfo(this->addr);
+    p_iter->refcount--;
+    if(p_iter->refcount == 0) collect();
+    p_iter = findPtrInfo(rv.addr);
+    p_iter->refcount++;
+	this->addr = rv.addr;
+    this->isArray = rv.isArray;
+    this->arraySize = rv.arraySize;
+    return *this;
 }
 
 // A utility function that displays refContainer.
@@ -201,3 +279,5 @@ void Pointer<T, size>::shutdown(){
     }
     collect();
 }
+
+#endif  // _GC_POINTER_H_
