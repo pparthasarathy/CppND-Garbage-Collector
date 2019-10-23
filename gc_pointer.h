@@ -46,18 +46,18 @@ public:
     {
         Pointer(NULL);
     }
-    Pointer(T*); //defined below outside the class
+    Pointer(T*); //pparthas: defined below outside the class scope
     // pparthas: Copy constructor defined using above constructor
     Pointer(const Pointer &inObj): Pointer(inObj.addr) {}
     // Destructor for Pointer.
-    ~Pointer();
+    ~Pointer(); //pparthas: defined below outside the class scope
     // Collect garbage. Returns true if at least
     // one object was freed.
-    static bool collect();
+    static bool collect(); //pparthas: defined below outside the class scope
     // Overload assignment of pointer to Pointer.
-    T *operator=(T *t);
+    T *operator=(T *t); //pparthas: defined below outside the class scope
     // Overload assignment of Pointer to Pointer.
-    Pointer &operator=(Pointer &rv);
+    Pointer &operator=(Pointer &rv); //pparthas: defined below outside the class scope
     // Return a reference to the object pointed
     // to by this Pointer.
     T &operator*() { return *addr; }
@@ -141,7 +141,7 @@ Pointer<T,size>::Pointer(T *t)
 template <class T, int size>
 Pointer<T, size>::~Pointer(){
 
-    // pparthas: Implement Pointer destructor
+    // pparthas: Pointer destructor
     // Lab: New and Delete Project Lab
 	auto p_iter = findPtrInfo(addr);
     if(p_iter != refContainer.end())
@@ -160,20 +160,27 @@ bool Pointer<T, size>::collect(){
     // LAB: New and Delete Project Lab
     // Note: collect() will be called in the destructor
     bool freedMem = false;
-    typename std::list<PtrDetails<T> >::iterator p_iter = refContainer.begin();
+    typename std::list<PtrDetails<T> >::iterator p_iter;
 	
     do
 	{
-        for(; p_iter != refContainer.end(); p_iter++)
+        // Scan refContainer looking for unreferenced pointers.
+        for(p_iter = refContainer.begin(); p_iter != refContainer.end(); p_iter++)
 		{
+            // if in use, skip over
             if(p_iter->refcount > 0) continue;
+
+            refContainer.remove(*p_iter);
+            //refContainer.erase(p_iter--);
+            freedMem = true;
+
             if(p_iter->memPtr)
 			{
                 if(p_iter->isArray) delete[] p_iter->memPtr;
-                else delete p_iter->memPtr;
-				freedMem = true;
-                refContainer.erase(p_iter--);
+                else delete p_iter->memPtr;                
             }
+            // Restart the search
+            break;
         }
     } while (p_iter != refContainer.end());
     

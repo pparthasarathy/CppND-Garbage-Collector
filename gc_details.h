@@ -20,7 +20,7 @@ array, then arraySize contains its size */
 
     PtrDetails(void)
     {
-        // pparthas: Implement PtrDetails
+        // pparthas: Constructor with no inputs
         memPtr = nullptr;
         isArray = false;
         arraySize = 0;
@@ -32,7 +32,7 @@ template <class T>
 bool operator==(const PtrDetails<T> &ob1,
                 const PtrDetails<T> &ob2)
 {
-    // pparthas: Implement operator==
+    // pparthas: operator==
     if( (ob1.arraySize == ob2.arraySize) && (ob1.memPtr == ob2.memPtr) )
     {
         return true;
@@ -41,5 +41,4 @@ bool operator==(const PtrDetails<T> &ob1,
     {
         return false;
     }
-    
 }
